@@ -39,30 +39,34 @@ const (
 )
 
 var (
-	m           = flag.String("m", "GET", "")
-	headers     = flag.String("h", "", "")
-	body        = flag.String("d", "", "")
-	bodyFile    = flag.String("D", "", "")
-	accept      = flag.String("A", "", "")
-	contentType = flag.String("T", "text/html", "")
-	authHeader  = flag.String("a", "", "")
-	hostHeader  = flag.String("host", "", "")
+	m           = flag.String("m", "GET", "HTTP method, one of GET, POST, PUT, DELETE, HEAD, OPTIONS.")
+	headers     = flag.String("h", "", "**DEPRECATED** use -H (Custom HTTP Header i.e. `-H Accept-Encoding: br`)")
+	body        = flag.String("d", "", "HTTP request body.")
+	bodyFile    = flag.String("D", "", "HTTP request body from file. For example, /home/user/file.txt or ./file.txt.")
+	accept      = flag.String("A", "", "HTTP Accept header.")
+	contentType = flag.String("T", "text/html", "Content-type, defaults to `text/html`.")
+	authHeader  = flag.String("a", "", "Basic authentication, username:password.")
+	hostHeader  = flag.String("host", "", "HTTP Host header.")
 
-	output = flag.String("o", "", "")
+	output = flag.String("o", "", "Output type. If none provided, a summary is printed."+
+		" `csv` is the only supported alternative. Dumps the response metrics in comma-separated values format.")
 
-	c = flag.Int("c", 50, "")
-	n = flag.Int("n", 200, "")
-	q = flag.Float64("q", 0, "")
-	t = flag.Int("t", 20, "")
-	z = flag.Duration("z", 0, "")
+	c = flag.Int("c", 50, "Number of workers to run concurrently. Total number of requests cannot"+
+		"be smaller than the concurrency level. Default is 50.")
+	n = flag.Int("n", 200, "Number of requests to run. Default is 200.")
+	q = flag.Float64("q", 0, "Rate limit, in queries per second (QPS) per worker. Default is no rate limit.")
+	t = flag.Int("t", 20, "Timeout for each request in seconds. Default is 20, use 0 for infinite.")
+	z = flag.Duration("z", 0, "Duration of application to send requests. When duration is reached,"+
+		" application stops and exits. If duration is specified, n is ignored. Examples: -z 10s -z 3m.")
 
-	h2   = flag.Bool("h2", false, "")
-	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "")
+	h2   = flag.Bool("h2", false, "Enable HTTP/2.")
+	cpus = flag.Int("cpus", runtime.GOMAXPROCS(-1), "Number of used cpu cores. (default for current machine is %d cores)")
 
-	disableCompression = flag.Bool("disable-compression", false, "")
-	disableKeepAlives  = flag.Bool("disable-keepalive", false, "")
-	disableRedirects   = flag.Bool("disable-redirects", false, "")
-	proxyAddr          = flag.String("x", "", "")
+	disableCompression = flag.Bool("disable-compression", false, "Disable compression.")
+	disableKeepAlives  = flag.Bool("disable-keepalive", false, "Disable keep-alive, prevents re-use of TCP+"+
+		" connections between different HTTP requests.")
+	disableRedirects = flag.Bool("disable-redirects", false, "Disable following of HTTP redirects")
+	proxyAddr        = flag.String("x", "", "HTTP Proxy address as host:port.")
 )
 
 var usage = `Usage: hey [options...] <url>
@@ -107,7 +111,8 @@ func main() {
 	}
 
 	var hs headerSlice
-	flag.Var(&hs, "H", "")
+	flag.Var(&hs, "H", "Custom HTTP header. You can specify as many as needed by repeating the flag."+
+		"For example, -H \"Accept: text/html\" -H \"Content-Type: application/xml\" .")
 
 	flag.Parse()
 	if flag.NArg() < 1 {
